@@ -81,8 +81,8 @@ var clang = compilerCase{
 		"-DCIFUZZ_HAS_SANITIZER",
 		// Make UBSan findings assertable by aborting.
 		"-fsanitize-undefined-trap-on-error",
-		// Disable compiler-specific extensions and use the C90 standard.
-		"-ansi",
+		// Disable compiler-specific extensions and use the C99 standard.
+		"-std=c99",
 		"-o",
 	},
 	"%s",

@@ -43,6 +43,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #if defined(_WIN32)
 #define POSIX_STAT _stat
@@ -60,6 +61,7 @@
 static const char *argv0;
 static int all_inputs_passed = 0;
 static int num_passing_inputs = 0;
+static int is_run_as_doctest = 0;
 static const char *current_input = NULL;
 
 /* Keep in sync with strsignal below. */
@@ -71,6 +73,43 @@ static const int TERMINATING_SIGNALS[] = {
     SIGTERM,
 };
 static const int NUM_TERMINATING_SIGNALS = sizeof(TERMINATING_SIGNALS) / sizeof(int);
+
+#define DOCTEST_XML_TEMPLATE                                                                       \
+    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"                                                 \
+    "<doctest binary=\"%s\" version=\"2.4.8\">\n"                                                  \
+    "  <TestSuite name=\"CIFuzz Regression Test\">\n"                                              \
+    "    <TestCase name=\"%s\" filename=\"%s\" line=\"%ld\">\n"                                    \
+    "      <OverallResultsAsserts successes=\"%ld\" failures=\"%ld\" test_case_success=\"%s\"/>\n" \
+    "    </TestCase>\n"                                                                            \
+    "  </TestSuite>\n"                                                                             \
+    "  <OverallResultsAsserts successes=\"%ld\" failures=\"%ld\"/>\n"                              \
+    "  <OverallResultsTestCases successes=\"%ld\" failures=\"%ld\" skipped=\"0\"/>\n"              \
+    "</doctest>\n"
+
+void print_doctest_xml(FILE *out,
+                       const char *test_name,
+                       const char *test_binary_path,
+                       const char *test_source_path,
+                       size_t test_source_line) {
+  const char *test_case_success_value;
+  size_t successes, failures;
+  test_case_success_value = all_inputs_passed ? "true" : "false";
+  successes = all_inputs_passed;
+  failures = !all_inputs_passed;
+  fprintf(out,
+          DOCTEST_XML_TEMPLATE,
+          test_binary_path,
+          test_name,
+          test_source_path,
+          test_source_line,
+          successes,
+          failures,
+          test_case_success_value,
+          successes,
+          failures,
+          successes,
+          failures);
+}
 
 #ifdef _WIN32
 /* The Microsoft C Runtime lacks strsignal, so we provide our own implementation for the signals we are handling. */
@@ -170,6 +209,14 @@ DEFINE_DEFAULT(int, LLVMFuzzerInitialize, (int *argc, char ***argv)) {
 /* Set by the FUZZ_TEST macro defined in cifuzz.h. */
 DEFINE_DEFAULT(const char*, cifuzz_test_name, (void)) {
   return NULL;
+}
+
+DEFINE_DEFAULT(const char*, cifuzz_test_source_path, (void)) {
+  return NULL;
+}
+
+DEFINE_DEFAULT(size_t, cifuzz_test_source_line, (void)) {
+  return 0;
 }
 
 /* Set by the CMake integration if a sanitizer is linked in.
@@ -351,6 +398,13 @@ static void print_summary(const char *failure_reason) {
 #endif
     }
   }
+  if (is_run_as_doctest) {
+    print_doctest_xml(stdout,
+                      WITH_DEFAULT(cifuzz_test_name()),
+                      argv0,
+                      cifuzz_test_source_path(),
+                      cifuzz_test_source_line());
+  }
 }
 
 static void explicit_exit_handler(void) {
@@ -363,9 +417,12 @@ static void terminating_signal_handler(int sig) {
    * and explain the termination. Afterwards, disable the handler and re-raise the signal to trigger the default action.
    */
   print_summary(strsignal(sig));
+  /* Doctest tests are expected to always exit cleanly rather than with a signal. */
+  if (is_run_as_doctest) {
+    _exit(1);
+  }
   signal(sig, SIG_DFL);
   raise(sig);
-  return;
 }
 
 static void register_terminating_signal_handler(int sig) {
@@ -440,6 +497,7 @@ int main(int argc, char **argv) {
    * modifying argc. */
   for (i = 1; i < argc; i++) {
     if (is_clion_doctest_arg(argv[i])) {
+      is_run_as_doctest = 1;
       argc = i;
       break;
     }
