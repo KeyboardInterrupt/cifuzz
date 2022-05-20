@@ -360,16 +360,18 @@ func NewMinijail(opts *Options) (*minijail, error) {
 		minijailArgs = append(minijailArgs, "-b", binding.String())
 	}
 
+	// Set environment variables
+	minijailArgs = append(minijailArgs, "--env-reset")
+	for _, e := range opts.Env {
+		minijailArgs = append(minijailArgs, "--env-add", e)
+	}
+
 	// -----------------------------------
 	// --- Set up process wrapper args ---
 	// -----------------------------------
 	// The process wrapper changes the working directory inside the
 	// sandbox to the first argument
 	processWrapperArgs := []string{processWrapperPath, workdir}
-
-	// The process wrapper sets environment variables inside the sandbox
-	// to the remaining arguments until the first "--".
-	processWrapperArgs = append(processWrapperArgs, opts.Env...)
 
 	// --------------------
 	// --- Run minijail ---
