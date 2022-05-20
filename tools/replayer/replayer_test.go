@@ -206,8 +206,9 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Failed to create temp dir for tests: %+v", err)
 	}
-	defer os.RemoveAll(baseTempDir)
-	m.Run()
+	exitCode := m.Run()
+	os.RemoveAll(baseTempDir)
+	os.Exit(exitCode)
 }
 
 func TestIntegrationReplayerWithMsvc(t *testing.T) {

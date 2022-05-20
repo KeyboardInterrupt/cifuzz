@@ -18,12 +18,13 @@ func TestMain(m *testing.M) {
 	orgStderr = os.Stderr
 
 	viper.Set("verbose", false)
-	m.Run()
+	exitCode := m.Run()
 	viper.Set("verbose", false)
 
 	os.Stderr = orgStderr
 	os.Stdout = orgStdout
 
+	os.Exit(exitCode)
 }
 
 func redirectOutput(t *testing.T) (*os.File, *os.File, *os.File, *os.File) {

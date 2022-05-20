@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"log"
 	"os"
@@ -14,6 +12,9 @@ import (
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var baseTempDir string
@@ -25,8 +26,9 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Failed to create temp dir for tests: %+v", err)
 	}
-	defer os.RemoveAll(baseTempDir)
-	m.Run()
+	exitCode := m.Run()
+	os.RemoveAll(baseTempDir)
+	os.Exit(exitCode)
 }
 
 func TestIntegrationCtestDefaultSettings(t *testing.T) {
