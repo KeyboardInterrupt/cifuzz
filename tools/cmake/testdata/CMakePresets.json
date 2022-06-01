@@ -1,0 +1,60 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "CIFuzz Fuzzing",
+      "displayName": "CIFuzz Fuzzing",
+      "binaryDir": "${sourceDir}/.cifuzz-build/libfuzzer/address+undefined",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CIFUZZ_ENGINE": "libfuzzer",
+        "CIFUZZ_SANITIZERS": "address;undefined",
+        "CIFUZZ_TESTING": {
+          "type": "BOOL",
+          "value": "ON"
+        }
+      }
+    },
+    {
+      "name": "CIFuzz Regression Test",
+      "displayName": "CIFuzz Regression Test",
+      "binaryDir": "${sourceDir}/.cifuzz-build/replayer/address+undefined",
+      "cacheVariables": {
+        "CIFUZZ_ENGINE": "replayer",
+        "CIFUZZ_SANITIZERS": "address;undefined"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "CIFuzz Fuzzing",
+      "displayName": "CIFuzz Fuzzing",
+      "configurePreset": "CIFuzz Fuzzing",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "CIFuzz Regression Test",
+      "displayName": "CIFuzz Regression Test",
+      "configurePreset": "CIFuzz Regression Test"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "CIFuzz Regression Test",
+      "displayName": "CIFuzz Regression Test",
+      "configurePreset": "CIFuzz Regression Test",
+      "filter": {
+        "include": {
+          "label": "^cifuzz_regression_test$"
+        }
+      }
+    }
+  ]
+}

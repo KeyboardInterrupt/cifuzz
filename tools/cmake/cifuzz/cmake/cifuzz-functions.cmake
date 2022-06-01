@@ -145,5 +145,7 @@ function(add_fuzz_test name)
        OUTPUT "$<SHELL_PATH:${_info_file}>"
        CONTENT $<TARGET_FILE:${name}>)
 
-  add_test(NAME "${name}_regression_test" COMMAND "${name}")
+  set(_test_name "${name}_regression_test")
+  add_test(NAME "${_test_name}" COMMAND "${name}")
+  set_tests_properties("${_test_name}" PROPERTIES LABELS "cifuzz_regression_test")
 endfunction()
