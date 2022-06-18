@@ -1,4 +1,4 @@
-package sanitizer
+package sanitizer_parser
 
 import (
 	"regexp"

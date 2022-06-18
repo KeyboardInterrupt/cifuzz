@@ -16,9 +16,9 @@ import (
 
 	"code-intelligence.com/cifuzz/pkg/log"
 	"code-intelligence.com/cifuzz/pkg/minijail"
-	libfuzzer_parser "code-intelligence.com/cifuzz/pkg/parser/libfuzzer"
 	"code-intelligence.com/cifuzz/pkg/report"
 	fuzzer_runner "code-intelligence.com/cifuzz/pkg/runner"
+	libfuzzer_parser "code-intelligence.com/cifuzz/pkg/runner/libfuzzer/parser"
 	"code-intelligence.com/cifuzz/util/envutil"
 	"code-intelligence.com/cifuzz/util/executil"
 	"code-intelligence.com/cifuzz/util/sliceutil"

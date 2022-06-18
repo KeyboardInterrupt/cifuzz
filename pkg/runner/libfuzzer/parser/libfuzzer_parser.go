@@ -1,4 +1,4 @@
-package libfuzzer_output_parser
+package parser
 
 import (
 	"bufio"
@@ -14,8 +14,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pterm/pterm"
 
-	"code-intelligence.com/cifuzz/pkg/parser/sanitizer"
 	"code-intelligence.com/cifuzz/pkg/report"
+	"code-intelligence.com/cifuzz/pkg/runner/sanitizer_parser"
 	"code-intelligence.com/cifuzz/util/regexutil"
 )
 
@@ -252,7 +252,7 @@ func (p *parser) parseAsNewFinding(line string) *report.Finding {
 		return finding
 	}
 
-	finding = sanitizer.ParseAsFinding(line)
+	finding = sanitizer_parser.ParseAsFinding(line)
 	if finding != nil {
 		return finding
 	}
