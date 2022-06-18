@@ -3,7 +3,7 @@ package libfuzzer
 import (
 	"testing"
 
-	"code-intelligence.com/cifuzz/integration/utils"
+	"code-intelligence.com/cifuzz/integration/runner/libfuzzer/testutils"
 )
 
 func TestIntegration_CasesWrittenToCorpus(t *testing.T) {
@@ -11,12 +11,12 @@ func TestIntegration_CasesWrittenToCorpus(t *testing.T) {
 		t.Skip()
 	}
 
-	utils.TestWithAndWithoutMinijail(t, func(t *testing.T, disableMinijail bool) {
-		test := utils.NewLibfuzzerTest(t, "new_paths_fuzzer", disableMinijail)
+	testutils.TestWithAndWithoutMinijail(t, func(t *testing.T, disableMinijail bool) {
+		test := testutils.NewLibfuzzerTest(t, "new_paths_fuzzer", disableMinijail)
 
 		_, _, reports := test.Run(t)
 
-		utils.CheckReports(t, reports, &utils.CheckReportOptions{
+		testutils.CheckReports(t, reports, &testutils.CheckReportOptions{
 			NumFindings: 0,
 		})
 
