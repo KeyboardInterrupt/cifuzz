@@ -75,7 +75,7 @@ func New() *cobra.Command {
 	rootCmd.AddCommand(initCmd.New())
 	rootCmd.AddCommand(createCmd.New(cmdConfig))
 	rootCmd.AddCommand(runCmd.New(cmdConfig))
-	rootCmd.AddCommand(reloadCmd.New())
+	rootCmd.AddCommand(reloadCmd.New(cmdConfig))
 
 	return rootCmd
 }
