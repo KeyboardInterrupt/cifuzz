@@ -35,34 +35,11 @@ func New(config *config.Config) *cobra.Command {
 
 func (c *reloadCmd) run() error {
 	if c.config.BuildSystem == config.BuildSystemCMake {
-		return c.reloadCMake()
+		return cmake.Reload(c.projectDir, c.OutOrStdout(), c.ErrOrStderr())
 	} else if c.config.BuildSystem == config.BuildSystemUnknown {
 		// Nothing to reload for unknown build system
 		return nil
 	} else {
 		return errors.Errorf("Unsupported build system \"%s\"", c.config.BuildSystem)
 	}
-}
-
-func (c *reloadCmd) reloadCMake() error {
-	// TODO: Make these configurable
-	engine := "libfuzzer"
-	sanitizers := []string{"address", "undefined"}
-
-	builder, err := cmake.NewBuilder(&cmake.BuilderOptions{
-		ProjectDir: c.projectDir,
-		Engine:     engine,
-		Sanitizers: sanitizers,
-		Stdout:     c.OutOrStdout(),
-		Stderr:     c.ErrOrStderr(),
-	})
-	if err != nil {
-		return err
-	}
-
-	err = builder.Configure()
-	if err != nil {
-		return err
-	}
-	return nil
 }

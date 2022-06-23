@@ -130,3 +130,22 @@ func (b *Builder) Build(fuzzTest string) error {
 	}
 	return nil
 }
+
+func Reload(projectDir string, stdout, stderr io.Writer) (err error) {
+	// TODO: Make these configurable
+	engine := "libfuzzer"
+	sanitizers := []string{"address", "undefined"}
+
+	builder, err := NewBuilder(&BuilderOptions{
+		ProjectDir: projectDir,
+		Engine:     engine,
+		Sanitizers: sanitizers,
+		Stdout:     stdout,
+		Stderr:     stderr,
+	})
+	if err != nil {
+		return
+	}
+
+	return builder.Configure()
+}
