@@ -45,6 +45,9 @@ func TestCreateCmd_InvalidType(t *testing.T) {
 }
 
 func TestCreateCmd_AskForOutputPath(t *testing.T) {
+	err := os.Setenv("USE_PTY", "true")
+	assert.NoError(t, err)
+
 	outputPath := filepath.Join(baseTempDir, "my_test_file.cpp")
 	input := []byte(strings.ReplaceAll(outputPath, "\\", "\\\\") + "\n")
 	r, w, err := os.Pipe()

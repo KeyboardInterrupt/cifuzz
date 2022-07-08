@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/creack/pty"
 	"github.com/manifoldco/promptui"
 	"github.com/pkg/errors"
 	"github.com/pterm/pterm"
@@ -94,16 +95,32 @@ func readFilenameWithShellCompletion(reader io.Reader, defaultValue string) (str
 
 	cmd := exec.Command(shellAbsPath, completionArgs...)
 	cmd.Stderr = os.Stderr
-	cmd.Stdin = reader
 	// Pass the pipe as fd 3
 	cmd.ExtraFiles = []*os.File{w}
-	err = cmd.Run()
-	if _, ok := err.(*exec.ExitError); ok {
-		// Fail silently in this case, which includes the user hitting Ctrl + C.
-		return "", cmdutils.WrapSilentError(errors.WithStack(err))
-	}
-	if err != nil {
-		return "", errors.WithStack(err)
+
+	// zsh doesn't read from stdin but uses /dev/tty instead. To avoid
+	// that zsh blocks on user input when called from a test, we use a
+	// pseudo terminal to pass the input. Tests which call InputFilename
+	// should therefore set the USE_PTY environment variable.
+	if os.Getenv("USE_PTY") != "" {
+		pty, err := pty.Start(cmd)
+		if err != nil {
+			return "", errors.WithStack(err)
+		}
+		// Make sure to close the pty at the end.
+		defer func() { _ = pty.Close() }()
+		// Copy reader to the pty
+		go func() { _, _ = io.Copy(pty, reader) }()
+	} else {
+		cmd.Stdin = reader
+		err = cmd.Run()
+		if _, ok := err.(*exec.ExitError); ok {
+			// Fail silently in this case, which includes the user hitting Ctrl + C.
+			return "", cmdutils.WrapSilentError(errors.WithStack(err))
+		}
+		if err != nil {
+			return "", errors.WithStack(err)
+		}
 	}
 
 	// Close the write end of the pipe
