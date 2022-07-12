@@ -16,6 +16,7 @@ import (
 	"golang.org/x/exp/maps"
 
 	"code-intelligence.com/cifuzz/pkg/cmdutils"
+	"code-intelligence.com/cifuzz/pkg/log"
 )
 
 // Select offers the user a list of items (label:value) to select from and returns the value of the selected item
@@ -134,6 +135,7 @@ func readFilenameWithShellCompletion(reader io.Reader, defaultValue string) (str
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
+	log.Printf("XXX: Got input %q", string(out))
 	input := strings.TrimSpace(pterm.RemoveColorFromString(string(out)))
 
 	if input == "" {
