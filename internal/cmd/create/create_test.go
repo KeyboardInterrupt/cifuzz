@@ -53,6 +53,7 @@ func TestCreateCmd_AskForOutputPath(t *testing.T) {
 	r, w, err := os.Pipe()
 	assert.NoError(t, err)
 
+	t.Logf("Piping input: %q", string(input))
 	_, err = w.Write(input)
 	assert.NoError(t, err)
 	w.Close()
