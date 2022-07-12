@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"code-intelligence.com/cifuzz/internal/build/cmake"
 	"code-intelligence.com/cifuzz/internal/config"
@@ -76,6 +77,7 @@ func (c *reloadCmd) reloadCMake() error {
 		ProjectDir: c.projectDir,
 		Engine:     engine,
 		Sanitizers: sanitizers,
+		Verbose:    viper.GetBool("verbose"),
 		Stdout:     c.OutOrStdout(),
 		Stderr:     c.ErrOrStderr(),
 	})

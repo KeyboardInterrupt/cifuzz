@@ -8,15 +8,19 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/pterm/pterm"
 
 	"code-intelligence.com/cifuzz/internal/build"
 	"code-intelligence.com/cifuzz/pkg/log"
 	"code-intelligence.com/cifuzz/util/executil"
 	"code-intelligence.com/cifuzz/util/fileutil"
+	"code-intelligence.com/cifuzz/util/regexutil"
 )
 
 // The CMake configuration (also called "build type") to use for fuzzing runs.
@@ -28,6 +32,7 @@ type BuilderOptions struct {
 	ProjectDir string
 	Engine     string
 	Sanitizers []string
+	Verbose    bool
 	Stdout     io.Writer
 	Stderr     io.Writer
 }
@@ -118,34 +123,111 @@ func (b *Builder) Configure() error {
 		cacheArgs = append(cacheArgs, "-DCMAKE_BUILD_RPATH_USE_ORIGIN:BOOL=ON")
 	}
 
+	logFile, err := os.Create("build.log")
+	if err != nil {
+		return errors.Wrap(err, "failed to create build log file")
+	}
+
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
 	cmd := exec.Command("cmake", append(cacheArgs, b.ProjectDir)...)
-	// Redirect the build command's stdout to stderr to only have
-	// reports printed to stdout
-	cmd.Stdout = b.Stderr
-	cmd.Stderr = b.Stderr
+	cmd.Stdout = io.MultiWriter(logFile, pw)
+	cmd.Stderr = cmd.Stdout
 	cmd.Env = b.env
 	cmd.Dir = b.BuildDir()
+
+	doneCh := make(chan struct{})
+	errsCh := make(chan error)
+	scanner := bufio.NewScanner(pr)
+	go func() {
+		if b.Verbose {
+			for scanner.Scan() {
+				log.Debug(scanner.Text())
+			}
+		} else {
+			// Show spinner if verbose is false
+			spinner, err := pterm.DefaultSpinner.WithWriter(b.Stderr).WithShowTimer(false).Start("Configuring...")
+			if err != nil {
+				errsCh <- errors.WithStack(err)
+			}
+
+			for scanner.Scan() {
+			}
+			spinner.Success("done")
+		}
+
+		<-doneCh
+	}()
+
 	log.Debugf("Working directory: %s", cmd.Dir)
 	log.Debugf("Command: %s", cmd.String())
-	err := cmd.Run()
+	err = cmd.Run()
 	return executil.HandleExecError(cmd, err)
 }
 
 // Build builds the specified fuzz test with CMake
 func (b *Builder) Build(fuzzTests []string) error {
+	logFile, err := os.OpenFile("build.log", os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return errors.Wrap(err, "failed to open build log file")
+	}
+
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
 	cmd := exec.Command(
 		"cmake",
 		"--build", b.BuildDir(),
 		"--config", cmakeBuildConfiguration,
 		"--target", strings.Join(fuzzTests, ","),
 	)
-	// Redirect the build command's stdout to stderr to only have
-	// reports printed to stdout
-	cmd.Stdout = b.Stderr
-	cmd.Stderr = b.Stderr
+	cmd.Stdout = io.MultiWriter(logFile, pw)
+	cmd.Stderr = cmd.Stdout
 	cmd.Env = b.env
+
+	doneCh := make(chan struct{})
+	errsCh := make(chan error)
+	scanner := bufio.NewScanner(pr)
+	go func() {
+		if b.Verbose {
+			for scanner.Scan() {
+				log.Debug(scanner.Text())
+			}
+		} else {
+			// Show progress bar if verbose is false
+			previousProgress := 0
+			progressPattern := regexp.MustCompile(`^\[\s{0,2}(?P<progress>\d{1,3})%]`)
+			progressbarPrinter, err := pterm.DefaultProgressbar.WithWriter(b.Stderr).WithTotal(100).Start()
+			if err != nil {
+				errsCh <- errors.WithStack(err)
+			}
+
+			for scanner.Scan() {
+				line := scanner.Text()
+
+				result, found := regexutil.FindNamedGroupsMatch(progressPattern, line)
+				if found {
+					currentProgress, err := strconv.Atoi(result["progress"])
+					if err != nil {
+						errsCh <- errors.WithStack(err)
+					}
+
+					progressbarPrinter.Add(currentProgress - previousProgress)
+					previousProgress = currentProgress
+				}
+			}
+		}
+
+		<-doneCh
+	}()
+
 	log.Debugf("Command: %s", cmd.String())
-	err := cmd.Run()
+	err = cmd.Run()
 	return executil.HandleExecError(cmd, err)
 }
 
