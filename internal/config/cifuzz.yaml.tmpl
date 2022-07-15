@@ -5,3 +5,7 @@
 ## default), cifuzz tries to detect the build system automatically.
 ## Valid values: "auto", "cmake", "unknown".
 #build-system: auto
+
+## If the build system type is "unknown", this command is used by
+## `cifuzz run` to build the fuzz test. Make sure that it XXX
+build-command
