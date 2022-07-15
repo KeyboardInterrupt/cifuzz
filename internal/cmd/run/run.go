@@ -78,7 +78,6 @@ type runCmd struct {
 	opts *runOptions
 
 	config        *config.Config
-	buildDir      string
 	reportHandler *report_handler.ReportHandler
 }
 
@@ -296,7 +295,7 @@ func (c *runCmd) findFuzzTestExecutable(fuzzTest string) (string, error) {
 		return fuzzTest, nil
 	}
 	var executable string
-	err := filepath.Walk(c.buildDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return errors.WithStack(err)
 		}
