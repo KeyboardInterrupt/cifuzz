@@ -7,5 +7,19 @@
 #build-system: cmake
 
 ## If the build system type is "unknown", this command is used by
-## `cifuzz run` to build the fuzz test. Make sure that it XXX
-build-command
+## `cifuzz run` to build the fuzz test.
+#build-command: "make my_fuzz_test"
+
+## Directories containing sample inputs for the code under test.
+## See https://llvm.org/docs/LibFuzzer.html#corpus and
+## https://aflplus.plus/docs/fuzzing_in_depth/#a-collecting-inputs.
+#seed-corpus-dirs:
+# - path/to/seed-corpus
+
+## A file containing input language keywords or other interesting byte sequences.
+## See https://llvm.org/docs/LibFuzzer.html#dictionaries and
+## https://github.com/AFLplusplus/AFLplusplus/blob/stable/dictionaries/README.md.
+#dict: path/to/dictionary.dct
+
+#engine-args:
+# -
