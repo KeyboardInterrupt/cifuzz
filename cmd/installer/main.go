@@ -5,28 +5,20 @@ import (
 
 	"github.com/spf13/cobra"
 
+	installer_bundle "code-intelligence.com/cifuzz/installer-bundle"
 	"code-intelligence.com/cifuzz/pkg/log"
 	"code-intelligence.com/cifuzz/tools/install"
 )
 
 func main() {
 	opts := &install.Options{}
+	fs := &installer_bundle.Bundle
 
 	cmd := &cobra.Command{
 		Use:   "installer",
 		Short: "Install cifuzz",
 		Run: func(cmd *cobra.Command, args []string) {
-			installer, err := install.NewInstaller(opts)
-			if err != nil {
-				log.Error(err, err.Error())
-				os.Exit(1)
-			}
-			err = installer.InstallCIFuzzAndDeps()
-			if err != nil {
-				log.Error(err, err.Error())
-				os.Exit(1)
-			}
-			installer.PrintPathInstructions()
+			install.ExtractBundle(opts.InstallDir, fs)
 		},
 	}
 

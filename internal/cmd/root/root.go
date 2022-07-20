@@ -22,12 +22,15 @@ import (
 	"code-intelligence.com/cifuzz/pkg/log"
 )
 
+var version = "v0.0.1"
+
 func New() (*cobra.Command, error) {
 	cmdConfig := config.NewConfig()
 
 	rootCmd := &cobra.Command{
-		Use:   "cifuzz",
-		Short: "#tbd",
+		Use:     "cifuzz",
+		Short:   "#tbd",
+		Version: version,
 		// We are using our custom ErrSilent instead to support a more specific
 		// error handling
 		SilenceErrors: true,

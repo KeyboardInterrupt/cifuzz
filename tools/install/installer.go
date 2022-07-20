@@ -1,7 +1,9 @@
 package install
 
 import (
+	"embed"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -81,7 +83,7 @@ func NewInstaller(opts *Options) (*Installer, error) {
 		fileutil.Cleanup(opts.InstallDir)
 		return nil, errors.WithStack(err)
 	}
-	err = os.MkdirAll(i.shareDir(), 0755)
+	err = os.MkdirAll(i.ShareDir(), 0755)
 	if err != nil {
 		fileutil.Cleanup(opts.InstallDir)
 		return nil, errors.WithStack(err)
@@ -98,7 +100,7 @@ func (i *Installer) libDir() string {
 	return filepath.Join(i.InstallDir, "lib")
 }
 
-func (i *Installer) shareDir() string {
+func (i *Installer) ShareDir() string {
 	return filepath.Join(i.InstallDir, "share", "cifuzz")
 }
 
@@ -114,7 +116,7 @@ func (i *Installer) Cleanup() {
 	fileutil.Cleanup(i.InstallDir)
 }
 
-func (i *Installer) InstallCIFuzzAndDeps() error {
+func (i *Installer) InstallCIFuzzAndDeps(version string) error {
 	var err error
 	if runtime.GOOS == "linux" {
 		err = i.InstallMinijail()
@@ -133,7 +135,7 @@ func (i *Installer) InstallCIFuzzAndDeps() error {
 		return err
 	}
 
-	err = i.InstallCIFuzz()
+	err = i.InstallCIFuzz(version)
 	if err != nil {
 		return err
 	}
@@ -196,13 +198,15 @@ func (i *Installer) InstallProcessWrapper() error {
 	return nil
 }
 
-func (i *Installer) InstallCIFuzz() error {
+func (i *Installer) InstallCIFuzz(version string) error {
 	// Build and install cifuzz
-	cmd := exec.Command("go", "build", "-o", i.CIFuzzExecutablePath(), "cmd/cifuzz/main.go")
+	// go build -ldflags="-X 'main.Version=v1.0.0'"
+	ldflags := `-ldflags="-X 'code-intelligence.com/cifuzz/internal/cmd/root.version=1.3.6'"`
+	cmd := exec.Command("go", "build", "-o", i.CIFuzzExecutablePath(), ldflags, "cmd/cifuzz/main.go")
+	fmt.Print(cmd.String())
 	cmd.Dir = i.projectDir
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
-	log.Printf("Command: %s", cmd.String())
 	err := cmd.Run()
 	if err != nil {
 		return errors.WithStack(err)
@@ -219,12 +223,12 @@ func (i *Installer) InstallCMakeIntegration() error {
 		// See:
 		// https://cmake.org/cmake/help/latest/command/find_package.html#config-mode-search-procedure
 		// https://gitlab.kitware.com/cmake/cmake/-/blob/5ed9232d781ccfa3a9fae709e12999c6649aca2f/Modules/Platform/UnixPaths.cmake#L30)
-		_, err := i.copyCMakeIntegration("/usr/local/share/cifuzz")
+		_, err := i.CopyCMakeIntegration("/usr/local/share/cifuzz")
 		if err != nil {
 			return err
 		}
 	}
-	dirForRegistry, err := i.copyCMakeIntegration(i.shareDir())
+	dirForRegistry, err := i.CopyCMakeIntegration(i.ShareDir())
 	if err != nil {
 		return err
 	}
@@ -245,6 +249,50 @@ Please add the following to ~/.profile or ~/.bash_profile:
     export PATH="$PATH:%s"
 `, i.binDir())
 	}
+}
+
+func ExtractBundle(installDir string, bundle *embed.FS) error {
+	if strings.HasPrefix(installDir, "~") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		installDir = home + strings.TrimPrefix(installDir, "~")
+	}
+
+	test, err := fs.Sub(bundle, "bundle")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	err = fs.WalkDir(test, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			targetDir := filepath.Dir(filepath.Join(installDir, path))
+			fmt.Printf("path=%q\n", targetDir)
+
+			err = os.MkdirAll(targetDir, 0755)
+			if err != nil {
+				return err
+			}
+
+			content, err := fs.ReadFile(test, path)
+			if err != nil {
+				return err
+			}
+
+			fileName := filepath.Join(targetDir, d.Name())
+			os.WriteFile(fileName, content, 0644)
+		}
+		return nil
+	})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
 }
 
 func findProjectDir() (string, error) {
@@ -274,7 +322,7 @@ func findProjectDir() (string, error) {
 // path that should be registered with the CMake package registry, if needed on
 // the platform.
 // Directories are created as needed.
-func (i *Installer) copyCMakeIntegration(destDir string) (string, error) {
+func (i *Installer) CopyCMakeIntegration(destDir string) (string, error) {
 	cmakeSrc := filepath.Join(i.projectDir, "tools", "cmake", "cifuzz")
 	opts := copy.Options{
 		// Skip copying the replayer, which is a symlink on UNIX but a file
